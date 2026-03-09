@@ -161,27 +161,38 @@ function getPokemonImageUrl(id) {
 /* ========== LOCALSTORAGE LEADERBOARD (GitHub Pages — no backend) ========== */
 function getStorageKey(diff) { return `pokemon_quiz_leaderboard_${diff}`; }
 
-async function fetchLeaderboard(diff) {
+async function fetchLeaderboard(mode) {
   try {
-    const raw = localStorage.getItem(getStorageKey(diff));
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    data.sort((a, b) => b.score - a.score || new Date(a.created_at) - new Date(b.created_at));
-    return data.slice(0, 50);
-  } catch { return []; }
+    const snapshot = await db.collection('leaderboard')
+      .where('mode', '==', mode)
+      .orderBy('score', 'desc')
+      .orderBy('timestamp', 'asc')
+      .limit(20)
+      .get();
+    
+    const entries = [];
+    snapshot.forEach(doc => entries.push(doc.data()));
+    return entries;
+  } catch (e) {
+    console.error('Firestore read error:', e);
+    return [];
+  }
 }
 
-async function postScore(name, sc, total, diff) {
+
+async function postScore(name, score, mode) {
   try {
-    const key = getStorageKey(diff);
-    const raw = localStorage.getItem(key);
-    const data = raw ? JSON.parse(raw) : [];
-    const entry = { name, score: sc, total, difficulty: diff, created_at: new Date().toISOString().slice(0, 19) };
-    data.push(entry);
-    localStorage.setItem(key, JSON.stringify(data));
-    return entry;
-  } catch { return null; }
+    await db.collection('leaderboard').add({
+      name: name,
+      score: score,
+      mode: mode,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    console.error('Firestore write error:', e);
+  }
 }
+
 
 let audioCtx = null;
 function ensureAudio() {
