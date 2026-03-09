@@ -36,7 +36,7 @@
 <link rel="icon" type="image/png" href="./favicon.png">
 <link rel="shortcut icon" type="image/png" href="./favicon.png">
 
-<!-- iOS Touch Icons (root-level + sized variants) -->
+<!-- iOS Touch Icons -->
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="apple-touch-icon-precomposed" href="./apple-touch-icon-precomposed.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
@@ -85,6 +85,11 @@
           <span class="diff-label">Сложный</span>
           <span class="diff-desc">5 вариантов</span>
         </button>
+        <button class="diff-btn" data-diff="gen1" onclick="selectDifficulty('gen1')">
+          <span class="diff-icon">🏅</span>
+          <span class="diff-label">1 Поколение</span>
+          <span class="diff-desc">151 покемон</span>
+        </button>
       </div>
       <button id="btn-start" class="btn btn-primary btn-large" onclick="startGame()">
         Начать игру
@@ -107,11 +112,12 @@
       </div>
     </div>
     <div class="quiz-body">
-      <div class="pokemon-image-wrapper">
+      <button id="btn-cancel" class="btn-cancel" onclick="cancelQuiz()">✕ Отмена</button>
+      <div id="pokemon-image-wrapper" class="pokemon-image-wrapper">
         <img id="pokemon-image" src="" alt="Покемон" class="pokemon-image">
         <div id="image-loader" class="image-loader">Загрузка...</div>
       </div>
-      <h2 class="quiz-question">Кто этот покемон?</h2>
+      <h2 id="quiz-question-label" class="quiz-question">Кто этот покемон?</h2>
       <div id="choices" class="choices"></div>
       <div id="feedback" class="feedback hidden"></div>
       <button id="btn-next" class="btn btn-primary hidden" onclick="nextQuestion()">
@@ -125,6 +131,9 @@
     <div class="name-content">
       <div class="result-summary" id="result-summary"></div>
       <div class="result-actions">
+        <button class="btn btn-secondary" onclick="showScreen('screen-title')">
+          На главную
+        </button>
         <button class="btn btn-primary btn-large" onclick="showScreen('screen-records')">
           Таблица рекордов
         </button>
@@ -146,6 +155,9 @@
         <button class="records-tab" data-tab="hard" onclick="switchRecordsTab('hard')">
           🔥 Сложный
         </button>
+        <button class="records-tab" data-tab="gen1" onclick="switchRecordsTab('gen1')">
+          🏅 Gen 1
+        </button>
       </div>
       <div id="records-table-wrapper">
         <table id="records-table" class="records-table">
@@ -154,6 +166,7 @@
               <th>#</th>
               <th>Имя</th>
               <th>Счёт</th>
+              <th>Время</th>
               <th>Дата</th>
             </tr>
           </thead>
@@ -178,7 +191,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-   
+
 <script src="./app.js"></script>
 </body>
 </html>
