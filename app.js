@@ -1,3 +1,22 @@
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBRrNL2HsOqkwhvdd-tfgRLbmj2nRMQfJY",
+  authDomain: "pokemon-quiz-38f4a.firebaseapp.com",
+  projectId: "pokemon-quiz-38f4a",
+  storageBucket: "pokemon-quiz-38f4a.firebasestorage.app",
+  messagingSenderId: "177531040205",
+  appId: "1:177531040205:web:9d617b9789a34fb202d484"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+
 /* ========== POKÉMON DATA — 60 most popular (Easy + Hard shared) ========== */
 const POKEMON_EASY = [
   { id: 1,   en: "Bulbasaur",   ru: "Бульбазавр" },
