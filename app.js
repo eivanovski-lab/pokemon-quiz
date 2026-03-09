@@ -1,21 +1,13 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
+/* ========== FIREBASE INIT (compat SDK) ========== */
+firebase.initializeApp({
   apiKey: "AIzaSyBRrNL2HsOqkwhvdd-tfgRLbmj2nRMQfJY",
   authDomain: "pokemon-quiz-38f4a.firebaseapp.com",
   projectId: "pokemon-quiz-38f4a",
   storageBucket: "pokemon-quiz-38f4a.firebasestorage.app",
   messagingSenderId: "177531040205",
   appId: "1:177531040205:web:9d617b9789a34fb202d484"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
+});
+const db = firebase.firestore();
 
 /* ========== POKÉMON DATA — 60 most popular (Easy + Hard shared) ========== */
 const POKEMON_EASY = [
@@ -158,41 +150,41 @@ function getPokemonImageUrl(id) {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 }
 
-/* ========== LOCALSTORAGE LEADERBOARD (GitHub Pages — no backend) ========== */
-function getStorageKey(diff) { return `pokemon_quiz_leaderboard_${diff}`; }
+/* ========== FIRESTORE LEADERBOARD ========== */
 
 async function fetchLeaderboard(mode) {
   try {
-    const snapshot = await db.collection('leaderboard')
-      .where('mode', '==', mode)
-      .orderBy('score', 'desc')
-      .orderBy('timestamp', 'asc')
+    const snapshot = await db.collection("leaderboard")
+      .where("mode", "==", mode)
+      .orderBy("score", "desc")
+      .orderBy("timestamp", "asc")
       .limit(20)
       .get();
-    
+
     const entries = [];
-    snapshot.forEach(doc => entries.push(doc.data()));
+    snapshot.forEach(function(doc) {
+      entries.push(doc.data());
+    });
     return entries;
   } catch (e) {
-    console.error('Firestore read error:', e);
+    console.error("Firestore read error:", e);
     return [];
   }
 }
 
-
-async function postScore(name, score, mode) {
+async function postScore(name, score, total, mode) {
   try {
-    await db.collection('leaderboard').add({
+    await db.collection("leaderboard").add({
       name: name,
       score: score,
+      total: total,
       mode: mode,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch (e) {
-    console.error('Firestore write error:', e);
+    console.error("Firestore write error:", e);
   }
 }
-
 
 let audioCtx = null;
 function ensureAudio() {
@@ -211,16 +203,16 @@ function playSound(freq, duration, type) {
     osc.connect(gain).connect(audioCtx.destination);
     osc.start();
     osc.stop(audioCtx.currentTime + duration);
-  } catch { /* ignore */ }
+  } catch (err) { /* ignore */ }
 }
 function playCorrectSound() {
   playSound(523.25, 0.1, "sine");
-  setTimeout(() => playSound(659.25, 0.1, "sine"), 100);
-  setTimeout(() => playSound(783.99, 0.15, "sine"), 200);
+  setTimeout(function() { playSound(659.25, 0.1, "sine"); }, 100);
+  setTimeout(function() { playSound(783.99, 0.15, "sine"); }, 200);
 }
 function playWrongSound() {
   playSound(200, 0.2, "sawtooth");
-  setTimeout(() => playSound(150, 0.3, "sawtooth"), 150);
+  setTimeout(function() { playSound(150, 0.3, "sawtooth"); }, 150);
 }
 function playClickSound() { playSound(800, 0.05, "sine"); }
 
@@ -240,7 +232,7 @@ function getPokemonPool() { return difficulty === "easy" ? POKEMON_EASY : POKEMO
 
 function selectDifficulty(diff) {
   difficulty = diff;
-  document.querySelectorAll(".diff-btn").forEach(btn => {
+  document.querySelectorAll(".diff-btn").forEach(function(btn) {
     btn.classList.toggle("active", btn.dataset.diff === diff);
   });
   ensureAudio();
@@ -249,8 +241,8 @@ function selectDifficulty(diff) {
 
 function showScreen(screenId) {
   clearAutoAdvance();
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  const screen = document.getElementById(screenId);
+  document.querySelectorAll(".screen").forEach(function(s) { s.classList.remove("active"); });
+  var screen = document.getElementById(screenId);
   if (screen) screen.classList.add("active");
   if (screenId === "screen-records") {
     recordsTabActive = difficulty;
@@ -264,39 +256,41 @@ function clearAutoAdvance() {
 }
 function startAutoAdvance() {
   clearAutoAdvance();
-  autoAdvanceTimer = setTimeout(() => { autoAdvanceTimer = null; nextQuestion(); }, AUTO_ADVANCE_DELAY);
+  autoAdvanceTimer = setTimeout(function() { autoAdvanceTimer = null; nextQuestion(); }, AUTO_ADVANCE_DELAY);
 }
 
 function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var temp = a[i];
+    a[i] = a[j];
+    a[j] = temp;
   }
   return a;
 }
 
 function generateQuestions() {
-  const pool = getPokemonPool();
-  const numChoices = getNumChoices();
-  const shuffled = shuffle(pool);
-  const selected = shuffled.slice(0, TOTAL_QUESTIONS - 1);
+  var pool = getPokemonPool();
+  var numChoices = getNumChoices();
+  var shuffled = shuffle(pool);
+  var selected = shuffled.slice(0, TOTAL_QUESTIONS - 1);
 
-  const normalQuestions = selected.map(correct => {
-    const others = pool.filter(p => p.id !== correct.id);
-    const wrongChoices = shuffle(others).slice(0, numChoices - 1);
-    const allChoices = shuffle([correct, ...wrongChoices]);
-    return { correct, choices: allChoices, imageUrl: getPokemonImageUrl(correct.id), isCustom: false };
+  var normalQuestions = selected.map(function(correct) {
+    var others = pool.filter(function(p) { return p.id !== correct.id; });
+    var wrongChoices = shuffle(others).slice(0, numChoices - 1);
+    var allChoices = shuffle([correct].concat(wrongChoices));
+    return { correct: correct, choices: allChoices, imageUrl: getPokemonImageUrl(correct.id), isCustom: false };
   });
 
-  const customPokemon = CUSTOM_POKEMON[Math.floor(Math.random() * CUSTOM_POKEMON.length)];
-  const customCorrect = { id: customPokemon.id, en: customPokemon.en, ru: customPokemon.ru };
-  const wrongPool = pool.filter(p =>
-    p.en.toLowerCase() !== customCorrect.en.toLowerCase() &&
-    p.ru.toLowerCase() !== customCorrect.ru.toLowerCase()
-  );
-  const wrongChoices = shuffle(wrongPool).slice(0, numChoices - 1);
-  const customChoices = shuffle([customCorrect, ...wrongChoices]);
+  var customPokemon = CUSTOM_POKEMON[Math.floor(Math.random() * CUSTOM_POKEMON.length)];
+  var customCorrect = { id: customPokemon.id, en: customPokemon.en, ru: customPokemon.ru };
+  var wrongPool = pool.filter(function(p) {
+    return p.en.toLowerCase() !== customCorrect.en.toLowerCase() &&
+           p.ru.toLowerCase() !== customCorrect.ru.toLowerCase();
+  });
+  var wrongChoices = shuffle(wrongPool).slice(0, numChoices - 1);
+  var customChoices = shuffle([customCorrect].concat(wrongChoices));
   normalQuestions.push({ correct: customCorrect, choices: customChoices, imageUrl: customPokemon.image, isCustom: true });
 
   return normalQuestions;
@@ -305,7 +299,7 @@ function generateQuestions() {
 function startGame() {
   ensureAudio();
   playClickSound();
-  const nameInput = document.getElementById("player-name");
+  var nameInput = document.getElementById("player-name");
   playerName = nameInput.value.trim();
   currentQuestion = 0;
   score = 0;
@@ -316,16 +310,16 @@ function startGame() {
 }
 
 function renderQuestion() {
-  const q = questions[currentQuestion];
+  var q = questions[currentQuestion];
   answered = false;
   clearAutoAdvance();
 
-  document.getElementById("question-counter").textContent = `Вопрос ${currentQuestion + 1} / ${TOTAL_QUESTIONS}`;
-  document.getElementById("score-display").textContent = `Счёт: ${score}`;
-  document.getElementById("progress-fill").style.width = `${((currentQuestion + 1) / TOTAL_QUESTIONS) * 100}%`;
+  document.getElementById("question-counter").textContent = "Вопрос " + (currentQuestion + 1) + " / " + TOTAL_QUESTIONS;
+  document.getElementById("score-display").textContent = "Счёт: " + score;
+  document.getElementById("progress-fill").style.width = (((currentQuestion + 1) / TOTAL_QUESTIONS) * 100) + "%";
 
-  const img = document.getElementById("pokemon-image");
-  const loader = document.getElementById("image-loader");
+  var img = document.getElementById("pokemon-image");
+  var loader = document.getElementById("image-loader");
   img.style.opacity = "0";
   loader.textContent = "Загрузка...";
   loader.classList.remove("hidden");
@@ -333,29 +327,29 @@ function renderQuestion() {
   img.className = "pokemon-image";
   if (q.isCustom) { img.classList.add("custom-photo"); } else { img.classList.add("pixelated"); }
 
-  img.onload = () => { img.style.opacity = "1"; loader.classList.add("hidden"); };
-  img.onerror = () => {
+  img.onload = function() { img.style.opacity = "1"; loader.classList.add("hidden"); };
+  img.onerror = function() {
     if (!q.isCustom) {
-      img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${q.correct.id}.png`;
+      img.src = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/" + q.correct.id + ".png";
     } else { loader.textContent = "?"; loader.classList.remove("hidden"); }
   };
   img.src = q.imageUrl;
 
-  const choicesEl = document.getElementById("choices");
-  const letters = ["А", "Б", "В", "Г", "Д"];
-  choicesEl.innerHTML = q.choices.map((p, i) => `
-    <button class="choice-btn" onclick="selectAnswer(${i})" data-index="${i}">
-      <span class="choice-letter">${letters[i]}</span>
-      <span class="choice-text">
-        <span class="name-ru">${p.ru}</span>
-        <span class="name-en">${p.en}</span>
-      </span>
-    </button>
-  `).join("");
+  var choicesEl = document.getElementById("choices");
+  var letters = ["А", "Б", "В", "Г", "Д"];
+  choicesEl.innerHTML = q.choices.map(function(p, i) {
+    return '<button class="choice-btn" onclick="selectAnswer(' + i + ')" data-index="' + i + '">' +
+      '<span class="choice-letter">' + letters[i] + '</span>' +
+      '<span class="choice-text">' +
+        '<span class="name-ru">' + p.ru + '</span>' +
+        '<span class="name-en">' + p.en + '</span>' +
+      '</span>' +
+    '</button>';
+  }).join("");
 
   document.getElementById("feedback").classList.add("hidden");
   document.getElementById("btn-next").classList.add("hidden");
-  const oldTimer = document.querySelector(".auto-timer");
+  var oldTimer = document.querySelector(".auto-timer");
   if (oldTimer) oldTimer.remove();
 }
 
@@ -364,18 +358,18 @@ function selectAnswer(index) {
   answered = true;
   ensureAudio();
 
-  const q = questions[currentQuestion];
-  const selected = q.choices[index];
-  const isCorrect = selected.id === q.correct.id;
-  const buttons = document.querySelectorAll(".choice-btn");
+  var q = questions[currentQuestion];
+  var selected = q.choices[index];
+  var isCorrect = selected.id === q.correct.id;
+  var buttons = document.querySelectorAll(".choice-btn");
 
-  buttons.forEach((btn, i) => {
+  buttons.forEach(function(btn, i) {
     btn.classList.add("disabled");
     if (q.choices[i].id === q.correct.id) btn.classList.add("correct");
     if (i === index && !isCorrect) { btn.classList.add("wrong"); btn.classList.add("shake"); }
   });
 
-  const feedback = document.getElementById("feedback");
+  var feedback = document.getElementById("feedback");
   feedback.classList.remove("hidden", "correct", "wrong");
   if (isCorrect) {
     score++;
@@ -384,16 +378,16 @@ function selectAnswer(index) {
     playCorrectSound();
   } else {
     feedback.classList.add("wrong");
-    feedback.textContent = `Неправильно! Это ${q.correct.ru} (${q.correct.en})`;
+    feedback.textContent = "Неправильно! Это " + q.correct.ru + " (" + q.correct.en + ")";
     playWrongSound();
   }
 
-  document.getElementById("score-display").textContent = `Счёт: ${score}`;
-  const nextBtn = document.getElementById("btn-next");
+  document.getElementById("score-display").textContent = "Счёт: " + score;
+  var nextBtn = document.getElementById("btn-next");
   nextBtn.textContent = currentQuestion < TOTAL_QUESTIONS - 1 ? "Следующий вопрос" : "Показать результат";
   nextBtn.classList.remove("hidden");
 
-  const timerBar = document.createElement("div");
+  var timerBar = document.createElement("div");
   timerBar.className = "auto-timer";
   timerBar.innerHTML = '<div class="auto-timer-fill"></div>';
   nextBtn.parentNode.insertBefore(timerBar, nextBtn.nextSibling);
@@ -404,7 +398,7 @@ function nextQuestion() {
   ensureAudio();
   playClickSound();
   clearAutoAdvance();
-  const timerBar = document.querySelector(".auto-timer");
+  var timerBar = document.querySelector(".auto-timer");
   if (timerBar) timerBar.remove();
   currentQuestion++;
   if (currentQuestion >= TOTAL_QUESTIONS) { showResultScreen(); } else { renderQuestion(); }
@@ -429,18 +423,17 @@ async function showResultScreen() {
   if (playerName) {
     await postScore(playerName, score, TOTAL_QUESTIONS, difficulty);
   }
-  const diffLabel = difficulty === "easy" ? "⭐ Простой" : "🔥 Сложный";
-  const nameDisplay = playerName ? escapeHtml(playerName) : "Аноним";
-  const savedNote = playerName ? "" : '<div style="font-size:13px;color:var(--color-text-faint);margin-top:8px;">Результат не сохранён (имя не указано)</div>';
+  var diffLabel = difficulty === "easy" ? "⭐ Простой" : "🔥 Сложный";
+  var nameDisplay = playerName ? escapeHtml(playerName) : "Аноним";
+  var savedNote = playerName ? "" : '<div style="font-size:13px;color:var(--color-text-faint);margin-top:8px;">Результат не сохранён (имя не указано)</div>';
 
-  document.getElementById("result-summary").innerHTML = `
-    <div style="font-size:56px;margin-bottom:8px;">${getResultEmoji(score)}</div>
-    <div style="font-size:16px;color:var(--color-text-muted);font-weight:700;margin-bottom:2px;">${nameDisplay}</div>
-    <div style="font-size:13px;color:var(--color-text-faint);font-weight:600;margin-bottom:8px;">${diffLabel}</div>
-    <div style="font-size:28px;font-weight:900;color:var(--color-accent);">${score} / ${TOTAL_QUESTIONS}</div>
-    <div style="font-size:15px;color:var(--color-text-muted);font-weight:600;margin-top:4px;">${getResultMessage(score)}</div>
-    ${savedNote}
-  `;
+  document.getElementById("result-summary").innerHTML =
+    '<div style="font-size:56px;margin-bottom:8px;">' + getResultEmoji(score) + '</div>' +
+    '<div style="font-size:16px;color:var(--color-text-muted);font-weight:700;margin-bottom:2px;">' + nameDisplay + '</div>' +
+    '<div style="font-size:13px;color:var(--color-text-faint);font-weight:600;margin-bottom:8px;">' + diffLabel + '</div>' +
+    '<div style="font-size:28px;font-weight:900;color:var(--color-accent);">' + score + ' / ' + TOTAL_QUESTIONS + '</div>' +
+    '<div style="font-size:15px;color:var(--color-text-muted);font-weight:600;margin-top:4px;">' + getResultMessage(score) + '</div>' +
+    savedNote;
   showScreen("screen-result");
 }
 
@@ -453,67 +446,71 @@ function switchRecordsTab(tab) {
 }
 
 function updateRecordsTabs() {
-  document.querySelectorAll(".records-tab").forEach(btn => {
+  document.querySelectorAll(".records-tab").forEach(function(btn) {
     btn.classList.toggle("active", btn.dataset.tab === recordsTabActive);
   });
 }
 
 async function loadRecords(diff) {
-  const tbody = document.getElementById("records-body");
-  const noRecords = document.getElementById("no-records");
+  var tbody = document.getElementById("records-body");
+  var noRecords = document.getElementById("no-records");
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--color-text-muted)">Загрузка...</td></tr>';
   noRecords.classList.add("hidden");
 
-  const data = await fetchLeaderboard(diff || recordsTabActive);
+  var data = await fetchLeaderboard(diff || recordsTabActive);
   if (data.length === 0) { tbody.innerHTML = ""; noRecords.classList.remove("hidden"); return; }
 
   noRecords.classList.add("hidden");
-  tbody.innerHTML = data.map((entry, i) => {
-    const rank = i + 1;
-    let rankClass = "rank-cell";
+  tbody.innerHTML = data.map(function(entry, i) {
+    var rank = i + 1;
+    var rankClass = "rank-cell";
     if (rank === 1) rankClass += " gold";
     else if (rank === 2) rankClass += " silver";
     else if (rank === 3) rankClass += " bronze";
-    let medalPrefix = "";
+    var medalPrefix = "";
     if (rank === 1) medalPrefix = "🥇 ";
     else if (rank === 2) medalPrefix = "🥈 ";
     else if (rank === 3) medalPrefix = "🥉 ";
-    const dateStr = entry.created_at ? new Date(entry.created_at + "Z").toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : "";
-    return `<tr>
-      <td class="${rankClass}">${medalPrefix}${rank}</td>
-      <td>${escapeHtml(entry.name)}</td>
-      <td class="score-cell">${entry.score} / ${entry.total}</td>
-      <td class="date-cell">${dateStr}</td>
-    </tr>`;
+    var dateStr = "";
+    if (entry.timestamp && entry.timestamp.toDate) {
+      dateStr = entry.timestamp.toDate().toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+    }
+    var totalDisplay = entry.total || TOTAL_QUESTIONS;
+    return '<tr>' +
+      '<td class="' + rankClass + '">' + medalPrefix + rank + '</td>' +
+      '<td>' + escapeHtml(entry.name) + '</td>' +
+      '<td class="score-cell">' + entry.score + ' / ' + totalDisplay + '</td>' +
+      '<td class="date-cell">' + dateStr + '</td>' +
+    '</tr>';
   }).join("");
 }
 
 function escapeHtml(str) {
-  const div = document.createElement("div");
+  var div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
 }
 
-document.addEventListener("keydown", (e) => {
-  const screen = document.querySelector(".screen.active");
+document.addEventListener("keydown", function(e) {
+  var screen = document.querySelector(".screen.active");
   if (!screen) return;
   if (screen.id === "screen-quiz" && !answered) {
-    const numChoices = getNumChoices();
-    const keyMap = { "1": 0, "2": 1, "3": 2, "4": 3, "5": 4 };
+    var numChoices = getNumChoices();
+    var keyMap = { "1": 0, "2": 1, "3": 2, "4": 3, "5": 4 };
     if (keyMap[e.key] !== undefined && keyMap[e.key] < numChoices) selectAnswer(keyMap[e.key]);
   }
   if (screen.id === "screen-quiz" && answered && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); nextQuestion(); }
   if (screen.id === "screen-title" && e.key === "Enter") startGame();
 });
 
-document.addEventListener("click", () => ensureAudio(), { once: true });
+document.addEventListener("click", function() { ensureAudio(); }, { once: true });
 
 /* ========== SERVICE WORKER REGISTRATION ========== */
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").then(() => {
+  window.addEventListener("load", function() {
+    navigator.serviceWorker.register("./sw.js").then(function() {
       /* SW registered */
-    }).catch(() => {
+    }).catch(function() {
       /* SW registration failed — game still works without it */
     });
   });
